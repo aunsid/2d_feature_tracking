@@ -13,33 +13,37 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
 
     if (matcherType.compare("MAT_BF") == 0)
     {
-        int normType = cv::NORM_HAMMING;
+        int normType = descriptorType.compare("DES_BINARY")==0 ?cv::NORM_HAMMING: cv::NORM_L2;
         matcher = cv::BFMatcher::create(normType, crossCheck);
     }
     else if (matcherType.compare("MAT_FLANN") == 0)
-    {
+    {   
+        if(descSource.type() != CV_32F)
+            descSource.covertTo(descSource, CV_32F);
+        if(descRef.type() != CV_32F)
+            descRef.covertTo(descRef, CV_32F);
         matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
     }
 
     // perform matching task
     if (selectorType.compare("SEL_NN") == 0)
     { // nearest neighbor (best match)
-
+        
         matcher->match(descSource, descRef, matches); // Finds the best match for each descriptor in desc1
     }
     else if (selectorType.compare("SEL_KNN") == 0)
     { // k nearest neighbors (k=2)
 
-        std::vector< std::vector<DMatch> > knn_matches;
+        std::vector< std::vector<cv::DMatch> > knn_matches;
         matcher->knnMatch( descriptors1, descriptors2, knn_matches, 2 );
         //-- Filter matches using the Lowe's ratio test
-        const float ratio_thresh = 0.7f;
-        std::vector<DMatch> good_matches;
+        const float ratio_thresh = 0.8f;
+
         for (size_t i = 0; i < knn_matches.size(); i++)
         {
             if (knn_matches[i][0].distance < ratio_thresh * knn_matches[i][1].distance)
             {
-                good_matches.push_back(knn_matches[i][0]);
+                matches.push_back(knn_matches[i][0]);
             }
         }
     }
