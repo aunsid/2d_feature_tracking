@@ -251,3 +251,75 @@ void detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, std:
     }
 }
 
+void detKeypointsHarris(std::vector<cv::KeyPoint>& keypoints, cv::Mat& img, bool bVis)
+{
+  // Detector parameters
+  int blockSize = 2; 
+  int apertureSize = 3;
+  int minResponse = 100; 
+  double maxOverlap = 0.0; 
+  double k = 0.04; 
+
+  // Detect Harris corners and normalize output
+  double t = (double)(cv::getTickCount());
+  cv::Mat dst, dst_norm, dst_norm_scaled;
+  dst = cv::Mat::zeros(img.size(), CV_32FC1 );
+  cv::cornerHarris( img, dst, blockSize, apertureSize, k, cv::BORDER_DEFAULT );
+  cv::normalize( dst, dst_norm, 0, 255, cv::NORM_MINMAX, CV_32FC1, cv::Mat() );
+  cv::convertScaleAbs( dst_norm, dst_norm_scaled );
+
+  // Look for prominent corners and instantiate keypoints (NMS)
+  for (int j = 0; j < dst_norm.rows; ++j)
+  {
+    for (int i = 0; i < dst_norm.cols; ++i)
+    {
+      int response = (int)(dst_norm.at<float>(j, i));
+      if (response > minResponse)
+      { 
+      // only store points above a threshold
+        cv::KeyPoint newKeyPoint;
+        newKeyPoint.pt = cv::Point2f(i, j);
+        newKeyPoint.size = 2 * apertureSize;
+        newKeyPoint.response = response;
+
+        // perform non-maxima suppression (NMS) in local neighbourhood around new key point
+        bool bOverlap = false;
+        for (auto& keypoint : keypoints)
+        {
+          double kptOverlap = cv::KeyPoint::overlap(newKeyPoint, keypoint);
+          if (kptOverlap > maxOverlap)
+          {
+            bOverlap = true;
+            if (newKeyPoint.response > keypoint.response)
+            {                          
+              keypoint = newKeyPoint;  
+              break;                   
+            }
+          }
+        }
+
+        if (!bOverlap)
+        {                                   
+          keypoints.push_back(newKeyPoint);
+        }
+      }
+    } 
+  } 
+  t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
+  cout << "Harris detection with n=" << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+
+
+  cout << 1000 * t / 1.0 << '\n';
+
+
+
+  if (bVis)
+  {
+    cv::Mat visImage = img.clone();
+    cv::drawKeypoints(img, keypoints, visImage, cv::Scalar::all(-1), cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    std::string windowName = "Harris Corner Detector with a Non-maximum Suppression  Results";
+    cv::namedWindow(windowName, 6);
+    imshow(windowName, visImage);
+    cv::waitKey(0);
+  }
+}
