@@ -2,6 +2,7 @@
 #include "matching2D.hpp"
 
 using namespace std;
+// using namespace cv;
 
 // Find best matches for keypoints in two camera images based on several matching methods
 void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::KeyPoint> &kPtsRef, cv::Mat &descSource, cv::Mat &descRef,
@@ -19,10 +20,10 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
     else if (matcherType.compare("MAT_FLANN") == 0)
     {   
         if(descSource.type() != CV_32F)
-            descSource.covertTo(descSource, CV_32F);
+            descSource.convertTo(descSource, CV_32F);
         if(descRef.type() != CV_32F)
-            descRef.covertTo(descRef, CV_32F);
-        matcher = DescriptorMatcher::create(DescriptorMatcher::FLANNBASED);
+            descRef.convertTo(descRef, CV_32F);
+        matcher = cv::DescriptorMatcher::create(cv::DescriptorMatcher::FLANNBASED);
     }
 
     // perform matching task
@@ -35,7 +36,7 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
     { // k nearest neighbors (k=2)
 
         std::vector< std::vector<cv::DMatch> > knn_matches;
-        matcher->knnMatch( descriptors1, descriptors2, knn_matches, 2 );
+        matcher->knnMatch( descSource, descRef, knn_matches, 2 );
         //-- Filter matches using the Lowe's ratio test
         const float ratio_thresh = 0.8f;
 
@@ -47,6 +48,8 @@ void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::Key
             }
         }
     }
+
+    cout << matches.size() << "    Number of matches  " << endl;
 }
 
 // Use one of several types of state-of-art descriptors to uniquely identify keypoints
@@ -81,7 +84,7 @@ void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descr
     }
     else if (descriptorType.compare("AKAZE") == 0)
     {
-
+        cout<<"AKAZE1"<<endl;
         cv::AKAZE::DescriptorType type = cv::AKAZE::DESCRIPTOR_MLDB;
         int descriptor_size = 0;
         int descriptor_channels = 3;
@@ -91,6 +94,7 @@ void descKeypoints(vector<cv::KeyPoint> &keypoints, cv::Mat &img, cv::Mat &descr
         cv::KAZE::DiffusivityType diffusivity = cv::KAZE::DIFF_PM_G2;
     
         extractor = cv::AKAZE::create(type,descriptor_size,descriptor_channels,threshold,nOctaves,nOctaveLayers,diffusivity);
+        // extractor = cv::AKAZE::create();
     }
     else if (descriptorType.compare("SIFT") == 0)
     {
@@ -199,7 +203,8 @@ void detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, std:
         detector = cv::ORB::create(nfeatures, scaleFactor,nlevels,edgeThreshold, firstLevel, WTA_K, scoreType, patchSize,fastThreshold);
     }
     else if (detectorType.compare("AKAZE") == 0)
-    {
+    {   
+        
 
         cv::AKAZE::DescriptorType type = cv::AKAZE::DESCRIPTOR_MLDB;
         int descriptor_size = 0;
@@ -209,7 +214,10 @@ void detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, std:
         int nOctaveLayers = 4;
         cv::KAZE::DiffusivityType diffusivity = cv::KAZE::DIFF_PM_G2;
     
-        detector = cv::AKAZE::create(type,descriptor_size,descriptor_channels,threshold,nOctaves,nOctaveLayers,diffusivity);
+        // detector = cv::AKAZE::create(type,descriptor_size,descriptor_channels,threshold,nOctaves,nOctaveLayers,diffusivity);
+        detector = cv::AKAZE::create();
+
+        cout<<"AKAZE2"<<endl;
 
     }
     else if (detectorType.compare("SIFT") == 0)
@@ -230,8 +238,8 @@ void detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, std:
     double t = (double)cv::getTickCount();
     detector->detect(img, keypoints);
     t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
-    cout << detectorType << " detector extraction in " << 1000 * t / 1.0 << " ms" << endl;
-
+    cout << detectorType<< "  detection with n=" << keypoints.size() << " keypoints in " << 1000 * t / 1.0 << " ms" << endl;
+   
      if (bVis)
     {
         cv::Mat visImage = img.clone();
